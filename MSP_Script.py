@@ -7,8 +7,8 @@ Created on Wed Mar 29 14:49:47 2017
 
 import xml.etree.ElementTree as ET  # Use cElementTree or lxml if too slow
 
-OSM_FILE = "MSP.osm"  # Replace this with your osm file
-SAMPLE_FILE = "MSP_100.osm"
+OSM_FILE = "MPLS.osm"  # Replace this with your osm file
+SAMPLE_FILE = "MPLS_50.osm"
 
 k = 100 # Parameter: take every k-th top level element
 
@@ -32,7 +32,7 @@ with open(SAMPLE_FILE, 'wb') as output:
 
     # Write every kth top level element
     for i, element in enumerate(get_element(OSM_FILE)):
-        if i % k == 0:
+        if i % k == 50:
             output.write(ET.tostring(element, encoding='utf-8'))
 
     output.write('</osm>')
