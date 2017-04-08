@@ -1,9 +1,5 @@
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""
-Created on Mon Apr 03 10:40:17 2017
-
-@author: Jeremy J. Yenko
-"""
 
 """
 After auditing is complete the next step is to prepare the data to be inserted into a SQL database.
@@ -168,7 +164,7 @@ import cerberus
 
 import schema
 
-OSM_PATH = "MSP.osm"
+OSM_PATH = "example.osm"
 
 NODES_PATH = "nodes.csv"
 NODE_TAGS_PATH = "nodes_tags.csv"
@@ -198,7 +194,60 @@ def shape_element(element, node_attr_fields=NODE_FIELDS, way_attr_fields=WAY_FIE
     way_nodes = []
     tags = []  # Handle secondary tags the same way for both node and way elements
 
-    # YOUR CODE HERE
+    if element.tag == 'node':
+        for attrib in NODE_FIELDS:
+            node_attribs[attrib] = element.attrib[attrib]
+        for child in element:
+            nd_tags = {}
+            if PROBLEMCHARS.match(child.attrib['k']):
+                pass
+            elif LOWER_COLON.match(child.attrib['k']):
+                nd_tags['id'] = element.attrib['id']
+                nd_tags['value'] = child.attrib['v']
+                nd_tags['type'] = child.attrib['k'].split(":",1)[0]
+                nd_tags['key'] = child.attrib['k'].split(":",1)[1]
+                tags.append(nd_tags)
+            else:
+                nd_tags['id'] = element.attrib['id']
+                nd_tags['value'] = child.attrib['v']
+                nd_tags['type'] = 'regular'
+                nd_tags['key'] = child.attrib['k']
+                tags.append(nd_tags)
+            
+    elif element.tag == 'way':
+        for attrib in WAY_FIELDS:
+            way_attribs[attrib] = element.attrib[attrib]
+        position = 0
+        for child in element:
+            wy_nodes = {}
+            wy_tags = {}
+            if child.tag == 'nd':
+                if element.attrib['id'] not in way_nodes:
+                    wy_nodes['position'] = position
+                    wy_nodes['id'] = element.attrib['id']
+                    wy_nodes['node_id'] = child.attrib['ref']
+                    way_nodes.append(wy_nodes)
+                    position += 1
+                else:
+                    wy_nodes['id'] = element.attrib['id']
+                    wy_nodes['node_id'] = child.attrib['ref']
+                    way_nodes.append(wy_nodes)
+            elif child.tag == 'tag':
+                if PROBLEMCHARS.match(child.attrib['k']):
+                    pass
+                elif LOWER_COLON.match(child.attrib['k']):
+                    wy_tags['id'] = element.attrib['id']
+                    wy_tags['value'] = child.attrib['v']
+                    wy_tags['type'] = child.attrib['k'].split(":",1)[0]
+                    wy_tags['key'] = child.attrib['k'].split(":",1)[1]
+                    tags.append(wy_tags)
+                else:
+                    wy_tags['id'] = element.attrib['id']
+                    wy_tags['value'] = child.attrib['v']
+                    wy_tags['type'] = 'regular'
+                    wy_tags['key'] = child.attrib['k']
+                    tags.append(wy_tags)
+
     if element.tag == 'node':
         return {'node': node_attribs, 'node_tags': tags}
     elif element.tag == 'way':
