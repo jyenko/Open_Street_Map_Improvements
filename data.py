@@ -5,7 +5,6 @@
 
 
 
-
 import csv
 import codecs
 import pprint
@@ -16,7 +15,7 @@ import cerberus
 
 import schema
 
-OSM_PATH = "MPLS.osm"
+OSM_PATH = "MPLS_SUBMISSION_DRAFT.osm"
 
 NODES_PATH = "nodes.csv"
 NODE_TAGS_PATH = "nodes_tags.csv"
@@ -26,6 +25,7 @@ WAY_TAGS_PATH = "ways_tags.csv"
 
 LOWER_COLON = re.compile(r'^([a-z]|_)+:([a-z]|_)+')
 PROBLEMCHARS = re.compile(r'[=\+/&<>;\'"\?%#$@\,\. \t\r\n]')
+street_type_re = re.compile(r'\b\S+\.?$', re.IGNORECASE)
 
 SCHEMA = schema.schema
 
@@ -109,6 +109,50 @@ def shape_element(element, node_attr_fields=NODE_FIELDS, way_attr_fields=WAY_FIE
 # ================================================== #
 #               Helper Functions                     #
 # ================================================== #
+
+""" For the update_street_name function"""
+expected = ["Street", "Avenue", "Drive", "Road"]
+
+mapping = { "Dr": "Drive",
+            "St": "Street",
+            "Rd": "Road",            
+            "Ave": "Avenue",
+            } # Focus only on these common street types for simplicity
+
+def audit_street_type(street_types, street_name):
+    m = street_type_re.search(street_name)
+    if m:
+        street_type = m.group()
+        if street_type not in expected:
+            street_types[street_type].add(street_name)
+
+
+def is_street_name(elem):
+    return (elem.attrib['k'] == "addr:street")
+
+
+def audit(osmfile):
+    osm_file = open(osmfile, "r")
+    street_types = defaultdict(set)
+    for event, elem in ET.iterparse(osm_file, events=("start",)):
+
+        if elem.tag == "node" or elem.tag == "way":
+            for tag in elem.iter("tag"):
+                if is_street_name(tag):
+                    audit_street_type(street_types, tag.attrib['v'])
+    osm_file.close()
+    return street_types
+
+
+def update_street_names(name, mapping):
+    m = street_type_re.search(name)
+    if m.group() not in expected:
+        if m.group() in mapping.keys():
+            name = re.sub(m.group(), mapping[m.group()], name)
+    return name
+          
+
+    
 def get_element(osm_file, tags=('node', 'way', 'relation')):
     """Yield element if it is the right type of tag"""
 
@@ -187,4 +231,4 @@ def process_map(file_in, validate):
 if __name__ == '__main__':
     # Note: Validation is ~ 10X slower. For the project consider using a small
     # sample of the map when validating.
-    process_map(OSM_PATH, validate=True)
+    process_map(OSM_PATH, validate=False)
